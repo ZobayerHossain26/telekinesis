@@ -24,9 +24,9 @@ export async function POST(req: Request) {
   const topic = req.headers.get("x-shopify-topic");
 
   // ✅ Only handle product update events
-  if (topic !== "products/update") {
-    return new Response("Ignored", { status: 200 });
-  }
+  // if (topic !== "products/update") {
+  //   return new Response("Ignored", { status: 200 });
+  // }
 
   // ✅ Verify signature
   if (!verifyShopifyWebhook(rawBody, hmacHeader)) {
