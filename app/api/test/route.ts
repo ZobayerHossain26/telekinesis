@@ -3,6 +3,7 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
+// ✅ Verify Shopify webhook signature
 function verifyShopifyWebhook(rawBody: string, hmacHeader?: string | null) {
   if (!hmacHeader) return false;
 
@@ -11,50 +12,49 @@ function verifyShopifyWebhook(rawBody: string, hmacHeader?: string | null) {
     .update(rawBody, "utf8")
     .digest("base64");
 
-  const generatedBuffer = Buffer.from(generated, "utf8");
-  const receivedBuffer = Buffer.from(hmacHeader, "utf8");
-
-  if (generatedBuffer.length !== receivedBuffer.length) return false;
-
-  return crypto.timingSafeEqual(generatedBuffer, receivedBuffer);
-}
-
-function generateLicenseKey() {
-  return crypto.randomBytes(16).toString("hex").toUpperCase();
+  return crypto.timingSafeEqual(
+    Buffer.from(generated),
+    Buffer.from(hmacHeader)
+  );
 }
 
 export async function POST(req: Request) {
   const rawBody = await req.text();
   const hmacHeader = req.headers.get("x-shopify-hmac-sha256");
+  const topic = req.headers.get("x-shopify-topic");
 
+  // ✅ Only handle product update events
+  if (topic !== "products/update") {
+    return new Response("Ignored", { status: 200 });
+  }
+
+  // ✅ Verify signature
   if (!verifyShopifyWebhook(rawBody, hmacHeader)) {
     return new Response("Invalid signature", { status: 401 });
   }
 
-  const payload = JSON.parse(rawBody);
+  const product = JSON.parse(rawBody);
 
-  const customerEmail = payload.email;
-  const orderId = payload.id;
+  const title = product.title;
+  const productId = product.id;
+  const updatedAt = product.updated_at;
 
-  for (const item of payload.line_items || []) {
-    const productName = item.title;
-    const sku = item.sku;
-
-    const licenseKey = generateLicenseKey();
-    const downloadUrl = `${process.env.DOWNLOAD_BASE_URL}?sku=${sku}&order=${orderId}`;
-
+  try {
     await resend.emails.send({
       from: process.env.FROM_EMAIL!,
-      to: "zobayerarif126@gmail.com",
-      subject: `Your ${productName} download & license key`,
+      to: "zobayerarif126@gmail.com", // ✅ hard-coded email for testing
+      subject: `Product Updated: ${title}`,
       html: `
-        <h2>Thanks for your purchase 🎉</h2>
-        <p><strong>License Key:</strong></p>
-        <pre>${licenseKey}</pre>
-        <p><a href="${downloadUrl}">Download your software</a></p>
-      `
+        <h2>Product Updated</h2>
+        <p><strong>ID:</strong> ${productId}</p>
+        <p><strong>Title:</strong> ${title}</p>
+        <p><strong>Updated At:</strong> ${updatedAt}</p>
+      `,
     });
+  } catch (error) {
+    console.error("Email error:", error);
+    return new Response("Email failed", { status: 500 });
   }
 
-  return new Response("Webhook processed", { status: 200 });
+  return new Response("Product update webhook processed", { status: 200 });
 }
