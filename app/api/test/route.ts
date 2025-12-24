@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   try {
     await resend.emails.send({
       from: process.env.FROM_EMAIL!,
-      to: "zobayerarif126@gmail.com", // ✅ hard-coded email for testing
+      to: ['zobayerarif126@gmail.com'], // ✅ hard-coded email for testing
       subject: `Product Updated: ${title}`,
       html: `
         <h2>Product Updated</h2>
