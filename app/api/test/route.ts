@@ -1,48 +1,60 @@
 import crypto from "crypto";
+import { Resend } from "resend";
 
-export async function POST(req: Request) {
-  const SHOPIFY_WEBHOOK_SECRET = process.env.SHOPIFY_WEBHOOK_SECRET;
+const resend = new Resend(process.env.RESEND_API_KEY!);
 
-  // 1️⃣ Get raw body
-  const rawBody = await req.text();
+function verifyShopifyWebhook(rawBody: string, hmacHeader?: string | null) {
+  if (!hmacHeader) return false;
 
-  // 2️⃣ Get Shopify HMAC header
-  const shopifyHmac = req.headers.get("x-shopify-hmac-sha256");
-
-  // 3️⃣ Generate HMAC
-  const generatedHmac = crypto
-    .createHmac("sha256", SHOPIFY_WEBHOOK_SECRET as string)
+  const generated = crypto
+    .createHmac("sha256", process.env.SHOPIFY_WEBHOOK_SECRET!)
     .update(rawBody, "utf8")
     .digest("base64");
 
-  // 4️⃣ Compare HMACs
-  if (!crypto.timingSafeEqual(
-    Buffer.from(generatedHmac),
-    Buffer.from(shopifyHmac || "")
-  )) {
-    return new Response("Invalid webhook signature", { status: 401 });
+  const generatedBuffer = Buffer.from(generated, "utf8");
+  const receivedBuffer = Buffer.from(hmacHeader, "utf8");
+
+  if (generatedBuffer.length !== receivedBuffer.length) return false;
+
+  return crypto.timingSafeEqual(generatedBuffer, receivedBuffer);
+}
+
+function generateLicenseKey() {
+  return crypto.randomBytes(16).toString("hex").toUpperCase();
+}
+
+export async function POST(req: Request) {
+  const rawBody = await req.text();
+  const hmacHeader = req.headers.get("x-shopify-hmac-sha256");
+
+  if (!verifyShopifyWebhook(rawBody, hmacHeader)) {
+    return new Response("Invalid signature", { status: 401 });
   }
 
-  // 5️⃣ Parse JSON payload
   const payload = JSON.parse(rawBody);
 
-  // ---- Example usage ----
   const customerEmail = payload.email;
   const orderId = payload.id;
 
-  payload.line_items.forEach((item:any) => {
+  for (const item of payload.line_items || []) {
+    const productName = item.title;
     const sku = item.sku;
-    const title = item.title;
 
-    console.log(
-      `Order ${orderId} | ${customerEmail} | ${title} | ${sku}`
-    );
+    const licenseKey = generateLicenseKey();
+    const downloadUrl = `${process.env.DOWNLOAD_BASE_URL}?sku=${sku}&order=${orderId}`;
 
-    // 👉 Client logic here:
-    // - Generate product key
-    // - Send download link + key via email
-  });
+    await resend.emails.send({
+      from: process.env.FROM_EMAIL!,
+      to: "zobayerarif126@gmail.com",
+      subject: `Your ${productName} download & license key`,
+      html: `
+        <h2>Thanks for your purchase 🎉</h2>
+        <p><strong>License Key:</strong></p>
+        <pre>${licenseKey}</pre>
+        <p><a href="${downloadUrl}">Download your software</a></p>
+      `
+    });
+  }
 
-  // Shopify requires 200 OK
-  return new Response("Webhook received", { status: 200 });
+  return new Response("Webhook processed", { status: 200 });
 }
