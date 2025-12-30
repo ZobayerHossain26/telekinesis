@@ -1,9 +1,66 @@
+// import crypto from "crypto";
+// import { Resend } from "resend";
+
+// const resend = new Resend(process.env.RESEND_API_KEY);
+
+// function verifyShopifyWebhook(rawBody: string, hmacHeader: string | null) {
+//   if (!hmacHeader) return false;
+
+//   const generated = crypto
+//     .createHmac("sha256", process.env.SHOPIFY_WEBHOOK_SECRET as any)
+//     .update(rawBody, "utf8")
+//     .digest("base64");
+
+//   return crypto.timingSafeEqual(
+//     Buffer.from(generated),
+//     Buffer.from(hmacHeader)
+//   );
+// }
+
+// export async function POST(req: Request) {
+//   console.log("🔥 Webhook hit");
+
+//   const rawBody = await req.text();
+//   const hmacHeader = req.headers.get("x-shopify-hmac-sha256");
+//   const topic = req.headers.get("x-shopify-topic");
+
+//   console.log("📌 Topic:", topic);
+
+//   if (!verifyShopifyWebhook(rawBody, hmacHeader)) {
+//     console.error("❌ Invalid signature");
+//     return new Response("Invalid signature", { status: 401 });
+//   }
+
+//   const product = JSON.parse(rawBody);
+
+//   const from = process.env.FROM_EMAIL;
+//   if (!from) {
+//     throw new Error("FROM_EMAIL is not defined");
+//   }
+
+//   await resend.emails.send({
+//     from,
+//     to: ["your@email.com"],
+//     subject: `Product Updated: ${product.title}`,
+//     html: `<p>${product.title} updated</p>`,
+//   });
+
+
+//   return new Response("OK", { status: 200 });
+// }
+
 import crypto from "crypto";
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
-function verifyShopifyWebhook(rawBody: string, hmacHeader: string | null) {
+function verifyShopifyWebhook(rawBody:any, hmacHeader:any) {
   if (!hmacHeader) return false;
 
   const generated = crypto
@@ -17,14 +74,11 @@ function verifyShopifyWebhook(rawBody: string, hmacHeader: string | null) {
   );
 }
 
-export async function POST(req: Request) {
+export async function POST(req:Request) {
   console.log("🔥 Webhook hit");
 
   const rawBody = await req.text();
   const hmacHeader = req.headers.get("x-shopify-hmac-sha256");
-  const topic = req.headers.get("x-shopify-topic");
-
-  console.log("📌 Topic:", topic);
 
   if (!verifyShopifyWebhook(rawBody, hmacHeader)) {
     console.error("❌ Invalid signature");
@@ -33,18 +87,16 @@ export async function POST(req: Request) {
 
   const product = JSON.parse(rawBody);
 
-  const from = process.env.FROM_EMAIL;
-  if (!from) {
-    throw new Error("FROM_EMAIL is not defined");
-  }
+  // 🚀 Respond immediately to Shopify
+  const response = new Response("OK", { status: 200 });
 
-  await resend.emails.send({
-    from,
-    to: ["your@email.com"],
+  // 📧 Send email in background (testing only)
+  transporter.sendMail({
+    from: `"Shopify Test" <${process.env.EMAIL_USER}>`,
+    to: process.env.EMAIL_USER,
     subject: `Product Updated: ${product.title}`,
-    html: `<p>${product.title} updated</p>`,
-  });
+    text: `Product "${product.title}" was updated.`,
+  }).catch(console.error);
 
-
-  return new Response("OK", { status: 200 });
+  return response;
 }
