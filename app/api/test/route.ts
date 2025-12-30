@@ -42,7 +42,11 @@ export async function POST(req: Request) {
     from,
     to: ["zobayerhossain.official26@gmail.com"],
     subject: `Product Updated: ${product.title}`,
-    html: `<p>${product.title} updated</p>`,
+    html: `<div><p>${product.title} updated
+    ${product.description}
+    ${product}
+    
+    </p></div>`,
   });
 
 
