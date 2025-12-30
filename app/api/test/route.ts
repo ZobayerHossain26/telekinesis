@@ -93,7 +93,7 @@ export async function POST(req:Request) {
   // 📧 Send email in background (testing only)
   transporter.sendMail({
     from: `"Shopify Test" <${process.env.EMAIL_USER}>`,
-    to: process.env.EMAIL_USER,
+    to: "zobayerarif126@gmail.com",
     subject: `Product Updated: ${product.title}`,
     text: `Product "${product.title}" was updated.`,
   }).catch(console.error);
