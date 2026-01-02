@@ -41,10 +41,8 @@ export async function POST(req: Request) {
   await resend.emails.send({
     from,
     to: ["zobayerhossain.official26@gmail.com"],
-    subject: `Product Updated: ${product.title}`,
-    html: `<div><p>${product.title} updated
-    ${product.description}
-    ${product}
+    subject: `Product Purchased: ${product.title}`,
+    html: `<div><p>${product.title} purchased.
     
     </p></div>`,
   });
