@@ -3,9 +3,6 @@ import sgMail from "@sendgrid/mail";
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
 
-/**
- * Verify Shopify Webhook Signature
- */
 function verifyShopifyWebhook(rawBody: string, hmacHeader: string | null) {
   if (!hmacHeader) return false;
 
@@ -27,8 +24,6 @@ export async function POST(req: Request) {
   const hmacHeader = req.headers.get("x-shopify-hmac-sha256");
   const topic = req.headers.get("x-shopify-topic");
 
-  console.log("📌 Topic:", topic);
-
   if (!verifyShopifyWebhook(rawBody, hmacHeader)) {
     console.error("❌ Invalid signature");
     return new Response("Invalid signature", { status: 401 });
@@ -36,20 +31,34 @@ export async function POST(req: Request) {
 
   const data = JSON.parse(rawBody);
 
+  /**
+   * ✅ Get customer email safely
+   */
+  const customerEmail =
+    data.email ||
+    data.customer?.email ||
+    process.env.TO_EMAIL; // fallback (admin)
+
+  if (!customerEmail) {
+    console.warn("⚠️ No customer email found");
+    return new Response("No email", { status: 200 });
+  }
+
   const msg = {
-    to: process.env.TO_EMAIL!,
+    to: customerEmail,
     from: process.env.FROM_SENDER_EMAIL!,
-    subject: `Shopify Event: ${topic}`,
+    subject: "Thanks for your order!",
     html: `
-      <h3>Shopify Webhook Received</h3>
-      <p><strong>Topic:</strong> ${topic}</p>
-      <p><strong>Title:</strong> ${data.title ?? "N/A"}</p>
+      <h2>Thank you for your order 🎉</h2>
+      <p><strong>Order:</strong> ${data.name ?? "N/A"}</p>
+      <p><strong>Total:</strong> ${data.total_price ?? "N/A"} ${data.currency ?? ""}</p>
+      <p>We’re processing your order and will update you soon.</p>
     `,
   };
 
   try {
     await sgMail.send(msg);
-    console.log("📧 Email sent via SendGrid");
+    console.log("📧 Email sent to customer:", customerEmail);
   } catch (error: any) {
     console.error("❌ SendGrid error:", error.response?.body || error);
   }
