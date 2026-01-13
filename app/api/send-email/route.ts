@@ -18,29 +18,24 @@ function verifyShopifyWebhook(rawBody: string, hmacHeader: string | null) {
 }
 
 export async function POST(req: Request) {
-  console.log("🔥 Shopify Webhook Hit");
+  console.log("Shopify Webhook Hit");
 
   const rawBody = await req.text();
   const hmacHeader = req.headers.get("x-shopify-hmac-sha256");
   const topic = req.headers.get("x-shopify-topic");
 
   if (!verifyShopifyWebhook(rawBody, hmacHeader)) {
-    console.error("❌ Invalid signature");
+    console.error(" Invalid signature");
     return new Response("Invalid signature", { status: 401 });
   }
 
   const data = JSON.parse(rawBody);
 
-  /**
-   * ✅ Get customer email safely
-   */
   const customerEmail =
-    data.email ||
-    data.customer?.email ||
-    process.env.TO_EMAIL; // fallback (admin)
+    data.email || data.customer?.email || process.env.TO_EMAIL;
 
   if (!customerEmail) {
-    console.warn("⚠️ No customer email found");
+    console.warn(" No customer email found");
     return new Response("No email", { status: 200 });
   }
 
@@ -49,56 +44,21 @@ export async function POST(req: Request) {
     from: process.env.FROM_SENDER_EMAIL!,
     subject: "Thanks for your order!",
     html: `
-  
-       <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <style>
-            body {{
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-                line-height: 1.6;
-                color: #333;
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
-                background-color: #f5f5f5;
-            }}
-            .container {{
-                background: #ffffff;
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
-                padding: 40px;
-                margin: 20px 0;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            }}
-            .header {{
-                text-align: center;
-                padding-bottom: 30px;
-                border-bottom: 2px solid #f0f0f0;
-            }}
-            .header h1 {{
-                color: #2c3e50;
-                margin: 0;
-                font-size: 28px;
-            }}
-            .content {{
-                padding: 30px 0;
-            }}
-            .license-box {{
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    <style>
+            .license-box {
+                background: #667eea;
                 border-radius: 8px;
                 padding: 30px;
                 margin: 25px 0;
                 text-align: center;
-            }}
-            .license-label {{
+            }
+            .license-label {
                 color: #ffffff;
                 font-size: 14px;
                 margin: 0 0 10px 0;
                 opacity: 0.9;
-            }}
-            .license-key {{
+            }
+            .license-key {
                 font-family: 'Courier New', monospace;
                 font-size: 22px;
                 font-weight: bold;
@@ -109,63 +69,72 @@ export async function POST(req: Request) {
                 background: rgba(255,255,255,0.1);
                 padding: 15px;
                 border-radius: 5px;
-            }}
-            .order-id {{
+            }
+            .order-id {
                 color: #ffffff;
                 font-size: 12px;
                 margin: 10px 0 0 0;
                 opacity: 0.8;
-            }}
-            .instructions {{
+            }
+            .instructions {
                 background: #e3f2fd;
                 border-left: 4px solid #2196F3;
                 padding: 20px;
                 margin: 25px 0;
                 border-radius: 4px;
-            }}
-            .instructions h3 {{
+            }
+            .instructions h3 {
                 margin-top: 0;
                 color: #1976D2;
-            }}
-            .instructions ol {{
+            }
+            .instructions ol {
                 margin: 10px 0;
                 padding-left: 20px;
-            }}
-            .instructions li {{
+            }
+            .instructions li {
                 margin: 8px 0;
-            }}
-            .footer {{
-                text-align: center;
-                padding-top: 30px;
-                border-top: 2px solid #f0f0f0;
-                color: #666;
-                font-size: 14px;
-            }}
-            .warning {{
+            }
+           
+            .warning {
                 background: #fff3cd;
                 border-left: 4px solid #ffc107;
                 padding: 15px 20px;
                 margin: 25px 0;
                 border-radius: 4px;
-            }}
-            .warning-title {{
+            }
+            .warning-title {
                 font-weight: bold;
                 color: #856404;
-            }}
-            .warning ul {{
+            }
+            .warning ul {
                 margin: 10px 0;
                 padding-left: 20px;
-            }}
+            }
         </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>🎉 Thank You For Your Purchase!</h1>
+
+ <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #f5f5f5;">
+        <div style="background: #ffffff;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 40px;
+                margin: 20px 0;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="text-align: center;
+                padding-bottom: 30px;
+                border-bottom: 2px solid #f0f0f0;">
+                <h1 style="color: #2c3e50;
+                margin: 0;
+                font-size: 28px;"> Thank You For Your Purchase!</h1>
             </div>
             
-            <div class="content">
-                <p>Hi {customer_name},</p>
+            <div style="padding:30px 0;">
+                <p>Hello There,</p>
                 
                 <p>Thank you for purchasing our software! Your license key has been generated and is ready to use.</p>
                 
@@ -176,7 +145,7 @@ export async function POST(req: Request) {
                 </div>
                 
                 <div class="instructions">
-                    <h3>📋 Activation Instructions</h3>
+                    <h3> Activation Instructions</h3>
                     <ol>
                         <li>Download and install the software from our website</li>
                         <li>Launch the application</li>
@@ -186,7 +155,7 @@ export async function POST(req: Request) {
                 </div>
                 
                 <div class="warning">
-                    <p class="warning-title">⚠️ Important Information:</p>
+                    <p class="warning-title">Important Information:</p>
                     <ul>
                         <li>This license allows activation on <strong>1 device</strong></li>
                         <li>Keep this email safe - you'll need it if you reinstall</li>
@@ -196,32 +165,31 @@ export async function POST(req: Request) {
                 </div>
                 
                 <p><strong>Need Help?</strong></p>
-                <p>If you have any questions or issues with activation, please reply to this email or contact our support team at {FROM_EMAIL}</p>
+                <p>If you have any questions or issues with activation, please reply to this email or contact our support team at ${process.env.FROM_SENDER_EMAIL}</p>
                 
                 <p>Best regards,<br><strong>${process.env.FROM_SENDER_EMAIL} Team</strong></p>
             </div>
             
-            <div class="footer">
-                <p>This email was sent to {email}</p>
-                <p>© 2024 {FROM_NAME}. All rights reserved.</p>
+            <div style="text-align: center
+                padding-top: 30px;
+                border-top: 2px solid #f0f0f0;
+                color: #666;
+                font-size: 14px;">
+                <p>This email was sent to ${customerEmail} </p>
+                <p>© 2026 ${process.env.FROM_SENDER_EMAIL} . All rights reserved.</p>
             </div>
         </div>
-    </body>
-    </html>
+
+ </div>
     `,
   };
 
   try {
     await sgMail.send(msg);
-    console.log("📧 Email sent to customer:", customerEmail);
+    console.log(" Email sent to customer:", customerEmail);
   } catch (error: any) {
-    console.error("❌ SendGrid error:", error.response?.body || error);
+    console.error(" SendGrid error:", error.response?.body || error);
   }
 
   return new Response("OK", { status: 200 });
 }
-
-  //  <h2>Thank you for your order 🎉</h2>
-  //     <p><strong>Order:</strong> ${data.name ?? "N/A"}</p>
-  //     <p><strong>Total:</strong> ${data.total_price ?? "N/A"} ${data.currency ?? ""}</p>
-  //     <p>We’re processing your order and will update you soon.</p>
